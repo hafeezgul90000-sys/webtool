@@ -1,0 +1,225 @@
+<div id="toolnest-compressor" style="max-width:650px;margin:20px auto;padding:25px;border:1px solid #ddd;border-radius:15px;background:#fff;font-family:Arial,sans-serif;">
+
+  <h2 style="text-align:center;">🖼️ Free Image Compressor</h2>
+
+  <input
+    type="file"
+    id="tnImage"
+    accept="image/jpeg,image/png,image/webp"
+    style="display:block;width:100%;margin:20px 0;padding:15px;border:2px dashed #aaa;border-radius:10px;"
+  >
+
+  <div id="tnInfo" style="margin:15px 0;"></div>
+
+  <label>
+    Quality:
+    <b><span id="tnQualityValue">60</span>%</b>
+  </label>
+
+  <input
+    type="range"
+    id="tnQuality"
+    min="10"
+    max="100"
+    value="60"
+    style="width:100%;margin:15px 0;"
+  >
+
+  <button
+    id="tnCompress"
+    type="button"
+    style="width:100%;padding:15px;border:0;border-radius:10px;background:#111;color:#fff;font-size:17px;font-weight:bold;cursor:pointer;"
+  >
+    Compress Image
+  </button>
+
+  <div id="tnResult" style="margin-top:20px;"></div>
+
+  <a
+    id="tnDownload"
+    style="display:none;text-decoration:none;"
+  >
+    <button
+      type="button"
+      style="width:100%;padding:15px;margin-top:15px;border:0;border-radius:10px;background:#d4af37;color:#000;font-size:17px;font-weight:bold;cursor:pointer;"
+    >
+      ⬇️ Download Compressed Image
+    </button>
+  </a>
+
+</div>
+
+<script>
+
+var tnSelectedFile = null;
+var tnImageData = null;
+
+var tnImage = document.getElementById("tnImage");
+var tnQuality = document.getElementById("tnQuality");
+var tnQualityValue = document.getElementById("tnQualityValue");
+var tnCompress = document.getElementById("tnCompress");
+var tnInfo = document.getElementById("tnInfo");
+var tnResult = document.getElementById("tnResult");
+var tnDownload = document.getElementById("tnDownload");
+
+tnQuality.oninput = function() {
+    tnQualityValue.innerHTML = this.value;
+};
+
+tnImage.onchange = function() {
+
+    tnSelectedFile = this.files[0];
+
+    if (!tnSelectedFile) {
+        return;
+    }
+
+    if (!tnSelectedFile.type.match(/^image\//)) {
+        alert("Please select an image file.");
+        return;
+    }
+
+    tnInfo.innerHTML =
+        "✅ Image Selected<br>" +
+        "Name: <b>" + tnSelectedFile.name + "</b><br>" +
+        "Original Size: <b>" +
+        Math.round(tnSelectedFile.size / 1024) +
+        " KB</b>";
+
+    tnResult.innerHTML = "";
+    tnDownload.style.display = "none";
+
+    var reader = new FileReader();
+
+    reader.onload = function(e) {
+        tnImageData = e.target.result;
+    };
+
+    reader.readAsDataURL(tnSelectedFile);
+};
+
+
+tnCompress.onclick = function() {
+
+    if (!tnSelectedFile || !tnImageData) {
+        alert("پہلے Image Select کریں۔");
+        return;
+    }
+
+    tnResult.innerHTML =
+        "<div style='padding:15px;background:#f5f5f5;border-radius:10px;text-align:center;'>⏳ Compressing...</div>";
+
+    var img = new Image();
+
+    img.onload = function() {
+
+        var canvas = document.createElement("canvas");
+        var ctx = canvas.getContext("2d");
+
+        var maxWidth = 2000;
+        var maxHeight = 2000;
+
+        var width = img.width;
+        var height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+
+            var ratio = Math.min(
+                maxWidth / width,
+                maxHeight / height
+            );
+
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        var quality = parseInt(tnQuality.value) / 100;
+
+        var compressedData;
+
+        try {
+
+            compressedData = canvas.toDataURL(
+                "image/jpeg",
+                quality
+            );
+
+        } catch(error) {
+
+            tnResult.innerHTML =
+                "❌ Compression Error: " + error.message;
+
+            return;
+        }
+
+        if (!compressedData || compressedData.length < 100) {
+
+            tnResult.innerHTML =
+                "❌ Compression failed.";
+
+            return;
+        }
+
+        var compressedBytes =
+            Math.round((compressedData.length * 3) / 4);
+
+        var originalKB =
+            Math.round(tnSelectedFile.size / 1024);
+
+        var compressedKB =
+            Math.max(1, Math.round(compressedBytes / 1024));
+
+        var saved = 0;
+
+        if (originalKB > 0) {
+            saved = Math.round(
+                ((originalKB - compressedKB) / originalKB) * 100
+            );
+        }
+
+        if (saved < 0) {
+            saved = 0;
+        }
+
+        tnResult.innerHTML =
+            "<div style='padding:18px;background:#f1fff5;border:1px solid #b7e4c7;border-radius:10px;'>" +
+
+            "<h3 style='margin-top:0;'>✅ Compression Complete</h3>" +
+
+            "<p>Original Size: <b>" +
+            originalKB +
+            " KB</b></p>" +
+
+            "<p>Compressed Size: <b>" +
+            compressedKB +
+            " KB</b></p>" +
+
+            "<p>Saved: <b>" +
+            saved +
+            "%</b></p>" +
+
+            "</div>";
+
+        tnDownload.href = compressedData;
+        tnDownload.download = "toolnest-compressed-image.jpg";
+        tnDownload.style.display = "block";
+
+    };
+
+    img.onerror = function() {
+
+        tnResult.innerHTML =
+            "❌ Image load نہیں ہو سکی۔ براہ کرم دوسری image try کریں۔";
+
+    };
+
+    img.src = tnImageData;
+
+};
+
+</script>
